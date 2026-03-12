@@ -454,7 +454,7 @@ with tab1:
         rfm = rfm.dropna(subset=["Recency", "Frequency", "Monetary"])
         rfm["Recency_Score"] = pd.qcut( rfm["Recency"].rank(method="first"),3,labels=[3,2,1]).astype(int)
         rfm["Frequency_Score"] = pd.qcut(rfm["Frequency"].rank(method="first"),3,labels=[1,2,3]).astype(int)
-        rfm["Monetary_Score"] = pd.qcut(rfm["Monetary"],3,labels=[1,2,3]).astype(int)
+        rfm["Monetary_Score"] = pd.qcut(rfm["Monetary"].rank(method="first"),3,labels=[1,2,3],duplicates="drop").astype(int)
         rfm["RFM_Score"] = (rfm["Recency_Score"] +rfm["Frequency_Score"] +rfm["Monetary_Score"])
         rfm["RFM_Segments"] = np.where(rfm["RFM_Score"] >= 7,"High_Value_Cust",np.where(rfm["RFM_Score"] >= 6,"Medium_Value_Cust","Low_Value_Cust"))
         rfm_segments = (rfm.groupby("RFM_Segments")["user_id"].count().reset_index(name="user_counts"))
