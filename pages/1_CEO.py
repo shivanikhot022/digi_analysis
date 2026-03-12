@@ -22,39 +22,49 @@ with st.sidebar:
 #page background
 st.markdown("""
 <style>
-
-/* Page background */
-[data-testid="stApp"],
-[data-testid="stAppViewContainer"] {
-    background-color:#A0D1FF;
-    min-height:100vh;
-}
-
 /* Sidebar background */
 [data-testid="stSidebar"] {
-    background-color:#055296;
-}
-/* Logout button styling */
-[data-testid="stSidebar"].stButton > button {{background-color: white !important;color: black !important;border-radius: 8px !important;font-weight: 600 !important;}}
-/* Hover effect */
-[data-testid="stSidebar"] .stButton > button:hover{{background-color: #222222 !important;color: white !important;}}
-        
-/* Sidebar text */
-[data-testid="stSidebar"] label,
-[data-testid="stSidebar"] span,
-[data-testid="stSidebar"] div {
-    font-size:18px !important;
-    font-weight:400 !important;
-    color:white !important;
+    background-color: #055296;
 }
 
-/* Sidebar header */
+/* Sidebar text (all labels, headers, filters) */
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] div,
+[data-testid="stSidebar"] p,
 [data-testid="stSidebar"] h1,
 [data-testid="stSidebar"] h2,
 [data-testid="stSidebar"] h3 {
-    font-size:22px !important;
-    font-weight:600 !important;
-    color:black !important;
+    color: white !important;
+    font-size: 18px !important;
+}
+
+/* Sidebar selectbox & multiselect text */
+[data-testid="stSidebar"] .stSelectbox label,
+[data-testid="stSidebar"] .stMultiSelect label {
+    color: white !important;
+}
+
+/* Dropdown selected value text */
+[data-testid="stSidebar"] .stSelectbox div,
+[data-testid="stSidebar"] .stMultiSelect div {
+    color: white !important;
+}
+
+/* Logout button styling */
+[data-testid="stSidebar"] .stButton > button {
+    background-color: black !important;
+    color: white !important;
+    border-radius: 8px !important;
+    border: none !important;
+    font-weight: 600 !important;
+    width: 100%;
+}
+
+/* Logout button hover */
+[data-testid="stSidebar"] .stButton > button:hover {
+    background-color: #222222 !important;
+    color: white !important;
 }
 
 /* TAB FONT SIZE */
