@@ -30,7 +30,7 @@ def set_bg(image_file):
             font-weight: bold !important;
         }}
         /* Logout button styling */
-        [data-testid="stSidebar"].stButton > button {{background-color: black !important;color: white !important;border-radius: 8px !important;font-weight: 600 !important;}}
+        [data-testid="stSidebar"].stButton > button {{background-color: white !important;color: black !important;border-radius: 8px !important;font-weight: 600 !important;}}
 
         /* Hover effect */
         [data-testid="stSidebar"] .stButton > button:hover{{background-color: #222222 !important;color: white !important;}}
