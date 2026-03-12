@@ -22,12 +22,17 @@ with st.sidebar:
 #page background
 st.markdown("""
 <style>
+/* Main page background */
+[data-testid="stAppViewContainer"] {
+    background-color: #A0D1FF;
+}
+
 /* Sidebar background */
 [data-testid="stSidebar"] {
     background-color: #055296;
 }
 
-/* Sidebar text (all labels, headers, filters) */
+/* Sidebar text */
 [data-testid="stSidebar"] label,
 [data-testid="stSidebar"] span,
 [data-testid="stSidebar"] div,
@@ -36,52 +41,26 @@ st.markdown("""
 [data-testid="stSidebar"] h2,
 [data-testid="stSidebar"] h3 {
     color: white !important;
-    font-size: 18px !important;
 }
 
-/* Sidebar selectbox & multiselect text */
+/* Filters text */
 [data-testid="stSidebar"] .stSelectbox label,
 [data-testid="stSidebar"] .stMultiSelect label {
     color: white !important;
 }
 
-/* Dropdown selected value text */
-[data-testid="stSidebar"] .stSelectbox div,
-[data-testid="stSidebar"] .stMultiSelect div {
-    color: white !important;
-}
-
-/* Logout button styling */
+/* Logout button */
 [data-testid="stSidebar"] .stButton > button {
     background-color: black !important;
     color: white !important;
     border-radius: 8px !important;
     border: none !important;
     font-weight: 600 !important;
-    width: 100%;
 }
 
 /* Logout button hover */
 [data-testid="stSidebar"] .stButton > button:hover {
     background-color: #222222 !important;
-    color: white !important;
-}
-
-/* TAB FONT SIZE */
-button[data-baseweb="tab"] {
-    font-size:48px !important;   /* increase size */
-    font-weight:800 !important;  /* bold */
-    padding:15px 40px !important;
-}
-
-/* space between tabs */
-div[role="tablist"]{
-    gap:20px !important;
-}
-
-/* active tab underline */
-button[aria-selected="true"]{
-    border-bottom:4px solid #055296 !important;
 }
 
 </style>
@@ -474,7 +453,7 @@ with tab1:
         rfm["RFM_Segments"] = np.where(rfm["RFM_Score"] >= 7,"High_Value_Cust",np.where(rfm["RFM_Score"] >= 6,"Medium_Value_Cust","Low_Value_Cust"))
         rfm_segments = (rfm.groupby("RFM_Segments")["user_id"].count().reset_index(name="user_counts"))
         rfm_segments["percentage"] = (rfm_segments["user_counts"] /rfm_segments["user_counts"].sum() * 100)
-        fig, ax = plt.subplots(figsize=(5,3))
+        fig, ax = plt.subplots(figsize=(5,4))
         st.subheader("RFM Customer Segmentation Distribution")
         ax.pie(rfm_segments["user_counts"],labels=rfm_segments["RFM_Segments"],autopct="%1.1f%%",startangle=90)
         plt.tight_layout()
@@ -488,8 +467,7 @@ with tab1:
             - Opportunity exists to convert Medium and Low value customers into High value through targeted campaigns.
 
             **Insight:** Majority of customers are low-value, highlighting strong need for upselling and loyalty programs.
-            """)    
-    st.markdown("<hr style='border:2px solid black'>", unsafe_allow_html=True)   
+            """)     
 
 def get_profit_margin_yoy(orders_fact, fil_orders, selected_years):
     if not selected_years:
@@ -630,7 +608,7 @@ with tab2:
         st.subheader("Refund Rate by Product")
         refund_product = (fil_orders.groupby("product_name").agg(total_refund=("refund_amount_usd","sum"),total_revenue=("total_net_revenue","sum")).reset_index())
         refund_product["refund_rate"]=(refund_product["total_refund"]/refund_product["total_revenue"])
-        fig, ax = plt.subplots(figsize=(5,4))
+        fig, ax = plt.subplots(figsize=(6,5.5))
         ax.barh(refund_product["product_name"],refund_product["refund_rate"],color="#055296")
         ax.set_xlabel("Refund Rate")
         ax.grid(axis="x", linestyle="--", color="black", alpha=0.3)
@@ -657,7 +635,7 @@ with tab2:
         fil_orders = fil_orders.merge(order_count[["user_id","customer_types"]], on="user_id", how="left")
         customer_type_profit = fil_orders.groupby("customer_types")["profit"].sum().reset_index()
 
-        fig, ax = plt.subplots(figsize=(5,4))
+        fig, ax = plt.subplots(figsize=(6,6))
         ax.bar(customer_type_profit["customer_types"], customer_type_profit["profit"], color="#055296")
         ax.set_xlabel("Customer Type")
         ax.set_ylabel("Profit")
@@ -677,17 +655,21 @@ with tab2:
             **Strategic Insight:** Profit is acquisition-driven rather than retention-driven — loyalty strategy can unlock growth.
             """)
     with col2:
-        cust_seg=fil_orders.groupby(["MonthShort","customer_type"])["customer_id"].count().reset_index(name="cust_counts")
+        # Orders per user
+        orders_per_user = fil_orders.groupby("user_id")["order_id"].nunique().reset_index(name="order_count")
+        orders_per_user["cust_type"] = np.where(orders_per_user["order_count"] > 2,"Repeat Customer","One Time Customer")
+        fil_orders = fil_orders.merge(orders_per_user[["user_id","cust_type"]],on="user_id",how="left")
+        cust_seg = fil_orders.groupby(["MonthShort","cust_type"])["customer_id"].count().reset_index(name="cust_counts")
         month_order = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
         cust_seg["MonthShort"] = pd.Categorical(cust_seg["MonthShort"],categories=month_order,ordered=True)
         cust_seg = cust_seg.sort_values("MonthShort")
         st.subheader("Customers By Month & Customer Type")
         fig, ax = plt.subplots(figsize=(6,6))
-        for customer in cust_seg["customer_type"].unique():
-            df_cust = cust_seg[cust_seg["customer_type"] == customer]
+        for customer in cust_seg["cust_type"].unique():
+            df_cust = cust_seg[cust_seg["cust_type"] == customer]
             ax.plot(df_cust["MonthShort"],df_cust["cust_counts"],marker="o",label=customer)
         ax.set_xlabel("Month")
-        ax.set_ylabel("Customer Counts ")
+        ax.set_ylabel("Customer Counts")
         ax.legend(title="Customer Type")
         ax.grid(axis="y", linestyle="--", alpha=0.3)
         plt.tight_layout()
@@ -697,7 +679,6 @@ with tab2:
             - One-time customers dominate monthly customer counts (900 to 1800 range).
             - December records the highest one-time customer count at approximately 1850.
             - Repeat customers range between 30 and 70 per month.
-            - Loyal customers contribute minimally across all months.
             - Q4 shows strong acquisition growth compared to earlier months.
 
             **Insight:** Business growth is driven by acquisition, with limited customer retention impact.
@@ -734,7 +715,7 @@ with tab2:
         st.subheader("Primary Vs Cross Selling Products By Revenue")
         revenue_primary_items=(fil_orders.groupby("is_primary_item")["total_net_revenue"].sum().reset_index())
         revenue_primary_items["is_primary_item"] = revenue_primary_items["is_primary_item"].map({0: "Cross Selling Product",1: "Primary Product"})
-        fig, ax = plt.subplots(figsize=(5,3))
+        fig, ax = plt.subplots(figsize=(6,5.6))
         ax.pie(revenue_primary_items["total_net_revenue"],labels=revenue_primary_items["is_primary_item"],autopct="%1.1f%%",startangle=90)
         center_cir=plt.Circle((0,0),0.50,fc="white")
         fig.gca().add_artist(center_cir)
@@ -750,8 +731,6 @@ with tab2:
 
             **Insight:** Cross-selling can significantly improve revenue diversification.
             """)
-
-       
 
     st.markdown("<hr style='border:2px solid black'>", unsafe_allow_html=True) 
     #product launch sales anaysis
@@ -781,7 +760,5 @@ with tab2:
         **Insight:** Product expansion strategy worked, but flagship product remains the dominant driver.
         """)
 
-
-st.markdown("<hr style='border:2px solid black'>", unsafe_allow_html=True) 
 
  

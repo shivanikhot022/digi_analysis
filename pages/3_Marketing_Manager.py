@@ -18,15 +18,19 @@ with st.sidebar:
     if st.button("Logout"):
         st.session_state.clear()
         st.switch_page("Login.py")
-
-page_bg = """
+st.markdown("""
 <style>
+/* Main page background */
+[data-testid="stAppViewContainer"] {
+    background-color: #A0D1FF;
+}
+
 /* Sidebar background */
 [data-testid="stSidebar"] {
     background-color: #055296;
 }
 
-/* Sidebar text (all labels, headers, filters) */
+/* Sidebar text */
 [data-testid="stSidebar"] label,
 [data-testid="stSidebar"] span,
 [data-testid="stSidebar"] div,
@@ -35,44 +39,30 @@ page_bg = """
 [data-testid="stSidebar"] h2,
 [data-testid="stSidebar"] h3 {
     color: white !important;
-    font-size: 18px !important;
 }
 
-/* Sidebar selectbox & multiselect text */
+/* Filters text */
 [data-testid="stSidebar"] .stSelectbox label,
 [data-testid="stSidebar"] .stMultiSelect label {
     color: white !important;
 }
 
-/* Dropdown selected value text */
-[data-testid="stSidebar"] .stSelectbox div,
-[data-testid="stSidebar"] .stMultiSelect div {
-    color: white !important;
-}
-
-/* Logout button styling */
+/* Logout button */
 [data-testid="stSidebar"] .stButton > button {
     background-color: black !important;
     color: white !important;
     border-radius: 8px !important;
     border: none !important;
     font-weight: 600 !important;
-    width: 100%;
 }
 
 /* Logout button hover */
 [data-testid="stSidebar"] .stButton > button:hover {
     background-color: #222222 !important;
-    color: white !important;
-}/* Increase tab font size */
-button[data-baseweb="tab"] {font-size: 40px !important;font-weight: 600 !important; padding: 12px 25px !important;   /* increase spacing inside tab */}
-/* Add space between tabs */
-div[role="tablist"] {gap: 35px !important;}
-button[aria-selected="true"] {border-bottom: 3px solid #055296 !important;}
+}
 
 </style>
-"""
-st.markdown(page_bg, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 data = get_data()
 orders_fact = data["orders_fact"]
 sessions = data["sessions"]
@@ -241,7 +231,7 @@ with tab1:
 
     with col2:
         # New vs Repeat Session Rate by Channel Type
-        st.subheader("New vs Repeat Session Rate by Channel Type")
+        st.subheader("New/Repeat Session Rate by Channel Type")
         # New vs Repeat Session Rate by Channel Type (Seaborn style)
         new_repeat = fil_sessions.groupby(["channel_type","session_type"])["website_session_id"].nunique().reset_index(name="sessions")
         fig, ax = plt.subplots(figsize=(6,4))
