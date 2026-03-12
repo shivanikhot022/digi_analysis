@@ -11,15 +11,15 @@ def get_data():
     data_path = os.path.join(base_dir, "data")
 
     # LOAD CSV FILES
-    orders = pd.read_csv(os.path.join(data_path, "orders.csv"),low_memory=False)
-    order_items = pd.read_csv(os.path.join(data_path, "order_items.csv"),low_memory=False)
-    datetable=pd.read_csv(os.path.join(data_path,"datetable.csv"),low_memory=False)
-    products = pd.read_csv(os.path.join(data_path, "products.csv"),low_memory=False)
-    website_sessions = pd.read_csv(os.path.join(data_path, "website_sessions.csv"),low_memory=False)
-    website_pageviews = pd.read_csv(os.path.join(data_path, "website_pageviews.csv"),usecols=["website_pageview_id","created_at","website_session_id","pageview_url","funnel_step_final"],parse_dates=["created_at"],low_memory=False)
-    order_item_refunds = pd.read_csv(os.path.join(data_path, "order_item_refunds.csv"),low_memory=False)
-    customer_360 = pd.read_csv(os.path.join(data_path, "customer_360.csv"),usecols=["customer_id","customer_type","avg_order_value"],low_memory=False)
-    # MEMORY OPTIMIZATION
+    orders = pd.read_parquet(os.path.join(data_path, "orders.parquet"))
+    order_items = pd.read_parquet(os.path.join(data_path, "order_items.parquet"))
+    products = pd.read_parquet(os.path.join(data_path, "products.parquet"))
+    website_sessions = pd.read_parquet(os.path.join(data_path, "website_sessions.parquet"))
+    website_pageviews = pd.read_parquet(os.path.join(data_path, "website_pageviews.parquet"))
+    order_item_refunds = pd.read_parquet(os.path.join(data_path, "order_item_refunds.parquet"))
+    customer_360 = pd.read_parquet(os.path.join(data_path, "customer_360.parquet"))
+    datetable = pd.read_parquet(os.path.join(data_path, "datetable.parquet"))
+# MEMORY OPTIMIZATION
     for df in [orders, order_items, products, website_sessions, website_pageviews, order_item_refunds]:
         for col in df.select_dtypes(include=["int64"]).columns:
             df[col] = df[col].astype("int32")
