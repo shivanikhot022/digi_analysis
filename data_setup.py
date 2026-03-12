@@ -85,6 +85,11 @@ def get_data():
     orders_fact = orders_fact.merge(customer_360,left_on="user_id",right_on="customer_id",how="left")
     #orders_fact=orders_fact.merge(datetable[["Date","Year"]],left_on="order_item_date",right_on="Date",how="right",suffixes=("","_dt"))
 
+    del orders
+    del products
+    del order_item_refunds
+    del customer_360
+    
     sessions = website_sessions
     pageviews=website_pageviews
     #sessions = website_pageviews.merge(website_sessions,on="website_session_id",how="left")
