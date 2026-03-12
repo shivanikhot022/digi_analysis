@@ -1,4 +1,7 @@
 import streamlit as st
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.warning("Please login first")
+    st.switch_page("app.py")
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt

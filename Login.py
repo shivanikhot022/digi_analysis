@@ -62,7 +62,7 @@ email = st.text_input("Email ID")
 password = st.text_input("Password", type="password")
 
 if st.button("Login"):
-    if email and password == "scalar@123":
+    if email == "admin@gmail.com" and password == "scalar@123":
         st.session_state.logged_in = True
         st.success("Login Successful ✅")
         st.switch_page("pages/1_CEO.py")

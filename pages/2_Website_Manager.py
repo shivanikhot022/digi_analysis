@@ -1,4 +1,7 @@
 import streamlit as st
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.warning("Please login first")
+    st.switch_page("Login.py")
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -101,7 +104,7 @@ fil_pageviews = pageviews[pageviews["website_session_id"].isin(session_ids)].cop
 fil_orders["device_type"] = fil_orders["website_session_id"].map(fil_sessions.set_index("website_session_id")["device_type"])
 st.title("🧸Dashboard For Website Manager")
 # TABS
-tab1, tab2, tab3 = st.tabs([ "📈 Website Traffic- Engagement Performance", "🛒 Website Conversion Funnel Analysis","📑 Business Insights & Performance Summary"])
+tab1, tab2 = st.tabs([ "📈 Website Traffic- Engagement Performance"])
 
 with tab1:
     total_sessions = fil_sessions["website_session_id"].nunique()

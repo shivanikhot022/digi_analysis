@@ -1,5 +1,8 @@
 #import packages
 import streamlit as st
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.warning("Please login first")
+    st.switch_page("Login.py")
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -15,7 +18,7 @@ st.set_page_config(page_title="CEO Dashboard", layout="wide")
 with st.sidebar:
     if st.button("Logout"):
         st.session_state.clear()
-        st.switch_page("app.py")
+        st.switch_page("Login.py")
 #page background
 st.markdown("""
 <style>
@@ -121,7 +124,7 @@ fil_orders = fil_orders[fil_orders["website_session_id"].isin(fil_sessions["webs
 
 st.title("🧸Dashboard For CEO")
 #tabs
-tab1, tab2, tab3 = st.tabs(["📊 Executive Overview - Business Performance", "📦Product Performance & Profitability","📑 Business Insights & Performance Summary"])
+tab1, tab2 = st.tabs(["📊 Executive Overview - Business Performance", "📦Product Performance & Profitability"])
 
 # TAB 1 —Executive Overview – Business Performance
 with tab1:

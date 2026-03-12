@@ -1,4 +1,7 @@
 import streamlit as st
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.warning("Please login first")
+    st.switch_page("Login.py")
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -86,7 +89,7 @@ if channel_type:
     
 st.title("🧸 Dashboard For Marketing Manager") 
 # TABS
-tab1, tab2, tab3 = st.tabs(["📢Marketing Traffic & Channel Performance","🔁 Customer Retention & Behavior Analysis","Business Insights & Performance Summary"])
+tab1, tab2 = st.tabs(["📢Marketing Traffic & Channel Performance","🔁 Customer Retention & Behavior Analysis"])
 with tab1:
     # st.write(fil_orders.head())
     # st.write(fil_sessions.head())
