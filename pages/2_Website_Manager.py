@@ -104,8 +104,6 @@ st.title("🧸Dashboard For Website Manager")
 tab1, tab2, tab3 = st.tabs([ "📈 Website Traffic- Engagement Performance", "🛒 Website Conversion Funnel Analysis","📑 Business Insights & Performance Summary"])
 
 with tab1:
-    #st.write(fil_sessions.head())
-    #st.write(fil_pageviews.head())
     total_sessions = fil_sessions["website_session_id"].nunique()
     total_orders = fil_orders["order_id"].nunique()
     total_visitors = fil_sessions["user_id"].nunique()

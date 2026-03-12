@@ -89,6 +89,7 @@ fil_orders = orders_fact.copy()
 datetable=datetable.copy()
 base_filtered=orders_fact.copy()
 
+
 fil_orders["created_at_x"] = pd.to_datetime(fil_orders["created_at_x"],errors="coerce")
 fil_orders["created_at_y"] = pd.to_datetime(fil_orders["created_at_y"],errors="coerce")
         
@@ -124,10 +125,7 @@ tab1, tab2, tab3 = st.tabs(["📊 Executive Overview - Business Performance", "�
 
 # TAB 1 —Executive Overview – Business Performance
 with tab1:
-    # st.write(fil_sessions["created_at"].dtype)
-    # st.write(fil_sessions.head())
-    #st.write(fil_orders.head())
-    # st.write(fil_orders.
+    #st.write("pageviews memory:", pageviews.memory_usage(deep=True).sum() / 1024**2, "MB") 
     refund_orders = fil_orders.merge(datetable, left_on="order_item_date", right_on="Date", how="right",suffixes=("","_dt"))
     total=refund_orders["total_net_revenue"].sum()
     tota=refund_orders["refund_amount_usd"].sum()
