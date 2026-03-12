@@ -40,7 +40,11 @@ button[data-baseweb="tab"] {font-size: 40px !important;font-weight: 600 !importa
 /* Add space between tabs */
 div[role="tablist"] {gap: 35px !important;}
 button[aria-selected="true"] {border-bottom: 3px solid #055296 !important;}
-
+/* Logout button styling */
+        [data-testid="stSidebar"].stButton > button {{background-color: white !important;color: black !important;border-radius: 8px !important;font-weight: 600 !important;}}
+/* Hover effect */
+        [data-testid="stSidebar"] .stButton > button:hover{{background-color: #222222 !important;color: white !important;}}
+        
 </style>
 """
 st.markdown(page_bg, unsafe_allow_html=True)
@@ -104,7 +108,7 @@ fil_pageviews = pageviews[pageviews["website_session_id"].isin(session_ids)].cop
 fil_orders["device_type"] = fil_orders["website_session_id"].map(fil_sessions.set_index("website_session_id")["device_type"])
 st.title("🧸Dashboard For Website Manager")
 # TABS
-tab1, tab2 = st.tabs([ "📈 Website Traffic- Engagement Performance"])
+tab1, tab2 = st.tabs([ "📈 Website Traffic- Engagement Performance","🛒 Website Conversion Funnel Analysis"])
 
 with tab1:
     total_sessions = fil_sessions["website_session_id"].nunique()

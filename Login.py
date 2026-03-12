@@ -29,11 +29,6 @@ def set_bg(image_file):
             font-size: 24px !important;
             font-weight: bold !important;
         }}
-        /* Logout button styling */
-        [data-testid="stSidebar"].stButton > button {{background-color: white !important;color: black !important;border-radius: 8px !important;font-weight: 600 !important;}}
-
-        /* Hover effect */
-        [data-testid="stSidebar"] .stButton > button:hover{{background-color: #222222 !important;color: white !important;}}
         /* Make warning & error text bigger & bold */
         [data-testid="stAlert"] {{
             font-size: 18px !important;

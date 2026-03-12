@@ -34,7 +34,11 @@ st.markdown("""
 [data-testid="stSidebar"] {
     background-color:#055296;
 }
-
+/* Logout button styling */
+[data-testid="stSidebar"].stButton > button {{background-color: white !important;color: black !important;border-radius: 8px !important;font-weight: 600 !important;}}
+/* Hover effect */
+[data-testid="stSidebar"] .stButton > button:hover{{background-color: #222222 !important;color: white !important;}}
+        
 /* Sidebar text */
 [data-testid="stSidebar"] label,
 [data-testid="stSidebar"] span,
