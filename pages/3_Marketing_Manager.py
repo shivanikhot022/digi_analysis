@@ -30,7 +30,7 @@ page_bg = """
 /* Sidebar label text */
 [data-testid="stSidebar"] label,
 [data-testid="stSidebar"] span,
-[data-testid="stSidebar"] div {font-size: 18px !important;font-style: bold  !important;color: black !important;}
+[data-testid="stSidebar"] div {font-size: 18px !important;font-style: bold  !important;color:white !important;}
 /* Sidebar header */
 [data-testid="stSidebar"] h1,
 [data-testid="stSidebar"] h2,

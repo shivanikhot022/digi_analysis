@@ -25,7 +25,7 @@ def set_bg(image_file):
 
         /* Make labels bigger & bold */
         label {{
-            color: black !important;
+            color: white!important;
             font-size: 18px !important;
             font-weight: bold !important;
         }}

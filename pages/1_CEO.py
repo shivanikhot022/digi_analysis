@@ -41,7 +41,7 @@ st.markdown("""
 [data-testid="stSidebar"] div {
     font-size:18px !important;
     font-weight:400 !important;
-    color:black !important;
+    color:white !important;
 }
 
 /* Sidebar header */
