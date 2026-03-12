@@ -25,8 +25,8 @@ def set_bg(image_file):
 
         /* Make labels bigger & bold */
         label {{
-            color: white!important;
-            font-size: 18px !important;
+            color: black!important;
+            font-size: 24px !important;
             font-weight: bold !important;
         }}
         /* Logout button styling */
