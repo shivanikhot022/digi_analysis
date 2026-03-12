@@ -4,7 +4,7 @@ import numpy as np
 import os
 import streamlit as st
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_data():
 
     base_dir = os.path.dirname(__file__)
