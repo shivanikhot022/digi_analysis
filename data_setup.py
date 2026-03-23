@@ -44,6 +44,19 @@ def get_data():
     order_items["DayType"] = order_items["order_item_date"].dt.dayofweek.apply(
         lambda x: "Weekend" if x >= 5 else "Weekday"
     )
+    #pageviews
+    conditions = [website_pageviews["pageview_url"].isin(["/home","/lander-1","/lander-2","/lander-3","/lander-4","/lander-5"]),
+        website_pageviews["pageview_url"] == "/products",
+        website_pageviews["pageview_url"].isin([
+            "/the-original-mr-fuzzy",
+            "/the-forever-love-bear",
+            "/the-birthday-sugar-panda",
+            "/the-hudson-river-mini-bear"]),
+        website_pageviews["pageview_url"] == "/cart",
+        website_pageviews["pageview_url"].isin(["/shipping","/billing","/billing-2"]),
+        website_pageviews["pageview_url"] == "/thank-you-for-your-order"]
+    choices = ["Landing Page","Product Page","Product Detail","Cart","Billing","Thank You"]
+    website_pageviews["funnel_step_final"] = np.select(conditions, choices, default="Other")
     # CREATE DATE COLUMNS
     website_sessions["session_date"] = website_sessions["created_at"].dt.date
     website_sessions["Year"] = website_sessions["created_at"].dt.year
@@ -53,8 +66,8 @@ def get_data():
     website_sessions["MonthShort"] = website_sessions["created_at"].dt.strftime("%b")
     website_sessions["day_name"] = website_sessions["created_at"].dt.day_name()
     website_sessions["DayType"] = website_sessions["created_at"].dt.dayofweek.apply(lambda x: "Weekend" if x >= 5 else "Weekday")
-    website_sessions["channel_type"] = np.select([website_sessions["utm_source"].isin(["gsearch", "bsearch"]),website_sessions["utm_source"] == "socialbook",website_sessions["utm_source"].isna() & website_sessions["http_referer"].str.contains("gsearch", na=False),website_sessions["utm_source"].isna() & website_sessions["http_referer"].str.contains("bsearch", na=False),website_sessions["utm_source"].isna() & website_sessions["http_referer"].str.contains("socialbook", na=False),],["Paid Search","Paid Social","Organic Search","Organic Search","Organic Social",],default="Direct")
-    website_sessions["session_type"]=np.where(website_sessions["is_repeat_session"]==1,"Repeat_Session","New_Session")
+    website_sessions["channel_name"] = np.select([website_sessions["utm_source"].isin(["gsearch", "bsearch"]),website_sessions["utm_source"] == "socialbook",website_sessions["utm_source"].isna() & website_sessions["http_referer"].str.contains("gsearch", na=False),website_sessions["utm_source"].isna() & website_sessions["http_referer"].str.contains("bsearch", na=False),website_sessions["utm_source"].isna() & website_sessions["http_referer"].str.contains("socialbook", na=False),],["Paid Search","Paid Social","Organic Search","Organic Search","Organic Social",],default="Direct")
+    website_sessions["session_type"]=np.where(website_sessions["is_repeat_session"]==1,"Repeat_Session","One_Time_Session")
     website_sessions["First Session Date"] =website_sessions.groupby("user_id")["created_at"].transform("min")
     website_sessions["days_since_first_session"] = ((website_sessions["created_at"].dt.normalize() )- (website_sessions["First Session Date"].dt.normalize())).dt.days
     def bin_days(days):
@@ -83,6 +96,7 @@ def get_data():
     orders_fact = order_items.merge(orders[["order_id", "created_at","website_session_id", "user_id"]],on="order_id",how="left")
     orders_fact = orders_fact.merge(products,on="product_id",how="left")
     orders_fact = orders_fact.merge(customer_360,left_on="user_id",right_on="customer_id",how="left")
+    orders_fact = orders_fact.merge(order_item_refunds,on="order_item_id",how="left",suffixes=("","_refund"))
     #orders_fact=orders_fact.merge(datetable[["Date","Year"]],left_on="order_item_date",right_on="Date",how="right",suffixes=("","_dt"))
 
     del orders

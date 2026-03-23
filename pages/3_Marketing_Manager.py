@@ -30,6 +30,33 @@ st.markdown("""
     background-color: #055296;
 }
 
+
+/* Remove column padding completely */
+[data-testid="column"] {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+}
+
+/* Reduce space inside metric */
+[data-testid="stMetric"] {
+    padding: 5px 5px !important;
+}
+
+/* Reduce metric value size */
+[data-testid="stMetricValue"] {
+    font-size: 36px !important;
+    font-weight:600 !important;
+}
+
+[data-testid="stMetricLabel"] {
+    font-size: 16px !important;
+}
+
+/* Optional: reduce delta size */
+[data-testid="stMetricDelta"] {
+    font-size: 12px !important;
+}
+
 /* Sidebar text */
 [data-testid="stSidebar"] label,
 [data-testid="stSidebar"] span,
@@ -86,15 +113,19 @@ year = st.sidebar.multiselect("Year", sorted(fil_sessions["Year"].dropna().uniqu
 if year:
     fil_sessions = fil_sessions[fil_sessions["Year"].isin(year)]
 
-month = st.sidebar.multiselect("Month", sorted(fil_sessions["MonthName"].dropna().unique()))
+month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun","Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+available_months = fil_orders["MonthShort"].dropna().unique()
+sorted_months = [m for m in month_order if m in available_months]
+month = st.sidebar.multiselect("Month", sorted_months)
 if month:
-    fil_sessions = fil_sessions[fil_sessions["MonthName"].isin(month)]
+    fil_sessions = fil_sessions[fil_sessions["MonthShort"].isin(month)]
+    fil_orders = fil_orders[fil_orders["MonthShort"].isin(month)]
 
 utm_campaign = st.sidebar.multiselect("UTM Campaign",sorted(fil_sessions["utm_campaign"].dropna().unique()))
 if utm_campaign:
     fil_sessions = fil_sessions[fil_sessions["utm_campaign"].isin(utm_campaign)]
 
-utm_source = st.sidebar.multiselect("Channel",sorted(fil_sessions["utm_source"].dropna().unique()))
+utm_source = st.sidebar.multiselect("Traffic Source",sorted(fil_sessions["utm_source"].dropna().unique()))
 if utm_source:
     fil_sessions = fil_sessions[fil_sessions["utm_source"].isin(utm_source)]
      
@@ -102,9 +133,9 @@ day_type = st.sidebar.multiselect("Day Type",sorted(fil_orders["DayType"].dropna
 if day_type:
     fil_orders = fil_orders[fil_orders["DayType"].isin(day_type)]
 
-channel_type = st.sidebar.multiselect("Channel Type",sorted(fil_sessions["channel_type"].dropna().unique()))
-if channel_type:
-    fil_sessions = fil_sessions[fil_sessions["device_type"].isin(channel_type)]
+channel_name = st.sidebar.multiselect("Channel Name",sorted(fil_sessions["channel_name"].dropna().unique()))
+if channel_name:
+    fil_sessions = fil_sessions[fil_sessions["device_type"].isin(channel_name)]
     
 st.title("🧸 Dashboard For Marketing Manager") 
 # TABS
@@ -120,6 +151,7 @@ with tab1:
     new_visitors_pct = new_visitors / total_visitors if total_visitors else 0
     converted_sessions = fil_orders["website_session_id"].nunique()
     total_sessions = fil_sessions["website_session_id"].nunique()
+    gross_revenue=fil_orders["total_net_revenue"].sum()+fil_orders["refund_amount_usd"].sum()
     conversion_rate = converted_sessions / total_sessions if total_sessions else 0
     def calculate_session_yoy_full_year():
     
@@ -133,32 +165,39 @@ with tab1:
     #avg_session_yoy_growth, _ = calculate_session_yoy_full_year()
     paid_channels = ["Paid Search","Paid Social"]
     free_channels = ["Direct","Organic Search","Organic Social"]
-    channel_table=fil_sessions[["website_session_id","channel_type"]]
+    channel_table=fil_sessions[["website_session_id","channel_name"]]
     session_orders=channel_table.merge(fil_orders,on="website_session_id",how="left")
-    paid_revenue=session_orders[session_orders["channel_type"].isin(paid_channels)]["total_net_revenue"].sum()
-    free_revenue=session_orders[session_orders["channel_type"].isin(free_channels)]["total_net_revenue"].sum()
+    session_orders["gross_revenue"] = session_orders["total_net_revenue"] + session_orders["refund_amount_usd"]
+    paid_revenue=session_orders[session_orders["channel_name"].isin(paid_channels)]["gross_revenue"].sum()
+    free_revenue=session_orders[session_orders["channel_name"].isin(free_channels)]["gross_revenue"].sum()
+    cart_sessions = pageviews[pageviews["pageview_url"] == "/cart"][["website_session_id"]].drop_duplicates()
+    order_sessions = orders_fact[["website_session_id"]].drop_duplicates()
+    cart_analysis = cart_sessions.merge(order_sessions,on="website_session_id",how="left",indicator=True)
+    cart_analysis["converted"] = (cart_analysis["_merge"] == "both").astype(int)
+    cart_abandonment_rate = 1 - (cart_analysis["converted"].sum() / len(cart_analysis))
     # Top channel by sessions
     top_channel = fil_sessions["utm_source"].value_counts().idxmax()
     top_channel_conv = top_channel_conv = ( fil_orders.merge( fil_sessions[["website_session_id","utm_source"]], on="website_session_id", how="left" ) .groupby("utm_source")["order_id"].nunique() / fil_sessions.groupby("utm_source")["website_session_id"].nunique() ).fillna(0).get(top_channel,0)
     
-    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
+    col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Visitors", format_num(total_visitors))
-    col2.metric("New Visitors %", f"{new_visitors_pct:.2%}")
+    col2.metric("One Time Visitors %", f"{new_visitors_pct:.2%}")
     col3.metric("Conversion Rate %", f"{conversion_rate:.2%}")
-    col4.metric("Avg Session YoY %", f"{avg_session_yoy_growth:.2%}")
-    col5.metric("Top Channel by Session", top_channel)
+    col4.metric("Cart Abandonment Rate", f"{cart_abandonment_rate:.2%}")
+    col5, col6, col7, col8=st.columns(4)
+    col5.metric("Top Traffic Source by Session", top_channel)
     col6.metric("Gsearch Conversion Rate", f"{top_channel_conv:.2%}")
     col7.metric("Free Channel Revenue", format_num(free_revenue))
     col8.metric("Paid Channel Revenue", format_num(paid_revenue))
     st.markdown("<hr style='border:2px solid black'>", unsafe_allow_html=True) 
     #Total Sessions by Month & Channel Type
-    st.subheader("Total Sessions by Month & Channel Type")
-    monthly_channel = fil_sessions.groupby(["MonthShort", "channel_type"])["website_session_id"].nunique().reset_index(name="sessions") 
+    st.subheader("Total Sessions by Month & Channel Name")
+    monthly_channel = fil_sessions.groupby(["MonthShort", "channel_name"])["website_session_id"].nunique().reset_index(name="sessions") 
     month_order = [ "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec" ]
     monthly_channel["MonthShort"] = pd.Categorical(monthly_channel["MonthShort"],categories=month_order,ordered=True)
     fig, ax = plt.subplots(figsize=(8,3)) 
-    for channel in monthly_channel["channel_type"].unique(): 
-        df_channel = monthly_channel[monthly_channel["channel_type"] == channel] 
+    for channel in monthly_channel["channel_name"].unique(): 
+        df_channel = monthly_channel[monthly_channel["channel_name"] == channel] 
         ax.plot(df_channel["MonthShort"], df_channel["sessions"], marker="o", label=channel)
     ax.set_ylabel("Sessions") 
     ax.legend() 
@@ -206,7 +245,7 @@ with tab1:
     col1, col2=st.columns(2)
     with col1:
         # Conversion Rate % by Channel
-        st.subheader("Conversion Rate % by Channel")
+        st.subheader("Conversion Rate % by Traffic Source")
         channel_sessions = fil_sessions.groupby("utm_source")["website_session_id"].nunique().reset_index(name="sessions") 
         orders_with_source = fil_orders.merge(fil_sessions[["website_session_id","utm_source"]], on="website_session_id", how="left") 
         channel_orders = orders_with_source.groupby("utm_source")["order_id"].nunique().reset_index(name="orders")
@@ -231,11 +270,11 @@ with tab1:
 
     with col2:
         # New vs Repeat Session Rate by Channel Type
-        st.subheader("New/Repeat Session Rate by Channel Type")
+        st.subheader("New/Repeat Session Rate by Channel Name")
         # New vs Repeat Session Rate by Channel Type (Seaborn style)
-        new_repeat = fil_sessions.groupby(["channel_type","session_type"])["website_session_id"].nunique().reset_index(name="sessions")
+        new_repeat = fil_sessions.groupby(["channel_name","session_type"])["website_session_id"].nunique().reset_index(name="sessions")
         fig, ax = plt.subplots(figsize=(6,4))
-        sns.barplot(x="channel_type", y="sessions", hue="session_type", data=new_repeat, palette=["#055296","#118DFF"], ax=ax)
+        sns.barplot(x="channel_name", y="sessions", hue="session_type", data=new_repeat, palette=["#055296","#118DFF"], ax=ax)
         ax.grid(axis="y", linestyle="--", alpha=0.3)
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
@@ -252,11 +291,11 @@ with tab1:
     st.markdown("<hr style='border:2px solid black'>", unsafe_allow_html=True) 
     col1,col2=st.columns(2)
     with col1:
-        paid_sessions = fil_sessions[fil_sessions["channel_type"].isin(paid_channels)]["website_session_id"].nunique()
-        free_sessions = fil_sessions[fil_sessions["channel_type"].isin(free_channels)]["website_session_id"].nunique()
-        merged = fil_orders.merge(fil_sessions[["website_session_id","channel_type"]],on="website_session_id",how="left")
-        paid_orders = merged[merged["channel_type"].isin(paid_channels)]["order_id"].nunique()
-        free_orders = merged[merged["channel_type"].isin(free_channels)]["order_id"].nunique()
+        paid_sessions = fil_sessions[fil_sessions["channel_name"].isin(paid_channels)]["website_session_id"].nunique()
+        free_sessions = fil_sessions[fil_sessions["channel_name"].isin(free_channels)]["website_session_id"].nunique()
+        merged = fil_orders.merge(fil_sessions[["website_session_id","channel_name"]],on="website_session_id",how="left")
+        paid_orders = merged[merged["channel_name"].isin(paid_channels)]["order_id"].nunique()
+        free_orders = merged[merged["channel_name"].isin(free_channels)]["order_id"].nunique()
         paid_conversion = paid_orders / paid_sessions if paid_sessions else 0
         free_conversion = free_orders / free_sessions if free_sessions else 0
         comparison_df = pd.DataFrame({"Channel Group": ["Paid", "Free"],"Sessions": [paid_sessions, free_sessions],"Orders": [paid_orders, free_orders],"Conversion %": [paid_conversion, free_conversion]})
@@ -310,14 +349,14 @@ with tab1:
     col1,col2=st.columns(2)
     with col1:
         #Conversion Rate % by Channel Type
-        st.subheader("Conversion Rate % by Channel Type")
-        channel_sessions = fil_sessions.groupby("channel_type")["website_session_id"].nunique().reset_index(name="sessions")
-        orders_with_channel = fil_orders.merge( fil_sessions[["website_session_id", "channel_type"]], on="website_session_id", how="left" ) 
-        channel_orders = orders_with_channel.groupby("channel_type")["order_id"].nunique().reset_index(name="orders") 
-        df = channel_sessions.merge(channel_orders, on="channel_type", how="left")
+        st.subheader("Conversion Rate % by Channel Name")
+        channel_sessions = fil_sessions.groupby("channel_name")["website_session_id"].nunique().reset_index(name="sessions")
+        orders_with_channel = fil_orders.merge( fil_sessions[["website_session_id", "channel_name"]], on="website_session_id", how="left" ) 
+        channel_orders = orders_with_channel.groupby("channel_name")["order_id"].nunique().reset_index(name="orders") 
+        df = channel_sessions.merge(channel_orders, on="channel_name", how="left")
         df["conversion_rate"] = df["orders"] / df["sessions"]
         colors =["#055296","#055296","#055296","#055296"]
-        fig = px.bar(df, y="channel_type", x="conversion_rate", color=colors[:len(df)])
+        fig = px.bar(df, y="channel_name", x="conversion_rate", color=colors[:len(df)])
         #fig.update_traces(texttemplate="%{text:.2%}", textposition="outside")
         #fig.update_yaxes(tickformat=".0%")
         st.plotly_chart(fig, use_container_width=True)
@@ -334,9 +373,9 @@ with tab1:
             
     with col2:
         # Repeat Visitors by Channel Type
-        st.subheader("Repeat Visitors by Channel Type")
-        repeat_df = fil_sessions[fil_sessions["is_repeat_session"] == 1].groupby("channel_type")["user_id"].nunique().reset_index(name="repeat_visitors")
-        fig = px.pie(repeat_df, values="repeat_visitors", names="channel_type",hole=0.4, color_discrete_sequence=["#055296","#118DFF"])
+        st.subheader("Repeat Visitors by Channel Name")
+        repeat_df = fil_sessions[fil_sessions["is_repeat_session"] == 1].groupby("channel_name")["user_id"].nunique().reset_index(name="repeat_visitors")
+        fig = px.pie(repeat_df, values="repeat_visitors", names="channel_name",hole=0.4, color_discrete_sequence=["#055296","#118DFF"])
         st.plotly_chart(fig, use_container_width=True)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
@@ -365,16 +404,30 @@ with tab2:
 
     # Top campaign by repeat visitors
     top_campaign = (fil_sessions[(fil_sessions["is_repeat_session"] == 1)& (fil_sessions["utm_campaign"] != "not available")].groupby("utm_campaign")["user_id"].nunique().reset_index().sort_values("user_id", ascending=False).head(1)["utm_campaign"].values[0]if "utm_campaign" in fil_sessions else "N/A")
-
+    customer_orders = fil_orders.groupby("user_id")["order_id"].nunique().reset_index()
+    repeat_users = customer_orders[customer_orders["order_id"] > 1]["user_id"]
+    # repeat_sessions = fil_sessions[fil_sessions["user_id"].isin(repeat_users)]["website_session_id"].nunique()
+    # repeat_orders = fil_orders[fil_orders["user_id"].isin(repeat_users)]["order_id"].nunique()
+    # repeat_conversion_rate = repeat_orders / repeat_sessions if repeat_sessions > 0 else 0
+    
+    # Remove 'not available' and null values first
+    filtered_sessions = fil_sessions[(fil_sessions["is_repeat_session"] == 1) & (fil_sessions["utm_source"].notna()) &(fil_sessions["utm_source"] != "not available")]
+    channel_repeat_users = (filtered_sessions.groupby("utm_source")["user_id"].nunique().reset_index())
+    channel_repeat_users.rename(columns={"user_id": "repeat_users"}, inplace=True)
+    top = channel_repeat_users.loc[channel_repeat_users["repeat_users"].idxmax()]
+    channel_name = top["utm_source"]
+    repeat_users_count = int(top["repeat_users"])
     # kpi cards
-    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+    col1, col2, col3, col4 = st.columns(4)
     col1.metric("Avg Days Since First Session",f"{avg_days_sins_first:.2f}") 
     col2.metric("Total Visitors", format_num(total_visitors))
     col3.metric("Repeat Visitors %", f"{repeat_visitors_rate:.2%}")
     col4.metric("Repeat Session Rate %", f"{repeat_session_rate:.2%}")
-    col5.metric("Avg Repeat Visitor YoY", f"{avg_repeat_yoy:.2f}%")
-    col6.metric("Top Campaign by Repeat", top_campaign)
+    col5, col6, col7,col8=st.columns(4)
+    col5.metric("Total Sessions",format_num(total_sessions))
+    col6.metric("Top Campaign by Repeat Visitors", top_campaign)
     col7.metric("Repeat Visitors", format_num(repeat_visitors))
+    col8.metric("Top Traffic Source By Repeat Visitors",channel_name)
     st.markdown("<hr style='border:2px solid black'>", unsafe_allow_html=True) 
 
     #Repeat Sessions by Days Bin
@@ -451,12 +504,12 @@ with tab2:
     with col2:
         # Repeat Revenue by Channel
         st.subheader("Repeat Revenue By Channel")
-        merged_df = fil_orders.merge(fil_sessions[['website_session_id','utm_source']], on='website_session_id', how='left')
-        channel_revenue = merged_df.groupby("utm_source")["total_net_revenue"].sum().reset_index()
+        merged_df = fil_orders.merge(fil_sessions[['website_session_id','channel_name']], on='website_session_id', how='left')
+        channel_revenue = merged_df.groupby("channel_name")["total_net_revenue"].sum().reset_index()
 
         plt.figure(figsize=(6,6))
-        sns.barplot(data=channel_revenue, x="utm_source", y="total_net_revenue", color="#055296")
-        plt.title("Revenue by Channel")
+        sns.barplot(data=channel_revenue, x="channel_name", y="total_net_revenue", color="#055296")
+        plt.title("Net Revenue by Channel")
         plt.xlabel("Channel")
         plt.ylabel("Total Net Revenue")
         plt.xticks(rotation=45)
@@ -464,14 +517,7 @@ with tab2:
         st.pyplot(plt)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
-            - GSearch generates the highest repeat revenue, exceeding 1.2 million.  
-            - Not Available channel contributes around 350,000 in repeat revenue.  
-            - BSearch contributes approximately 260,000.  
-            - SocialBook generates minimal repeat revenue.  
-            - Search-driven channels dominate repeat revenue contribution.  
-
-            **Insight:** Search campaigns are highly valuable for long-term customer value.
-            """)
+           """)
     st.markdown("<hr style='border:2px solid black'>", unsafe_allow_html=True) 
     col1, col2 = st.columns(2)
 
@@ -496,7 +542,7 @@ with tab2:
 
     with col2:
         # Repeat Customers by Channel
-        st.subheader("Repeat Customers By Channel")
+        st.subheader("Repeat Customers By Traffic Source")
         merged_df = fil_orders.merge(fil_sessions[['website_session_id','utm_source']], on='website_session_id', how='left')
         repeat_customers = merged_df.groupby("utm_source")["user_id"].nunique().reset_index(name="Customers")
 
@@ -510,13 +556,6 @@ with tab2:
         st.pyplot(plt)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
-            - GSearch brings the highest repeat customers at over 21,000 users.  
-            - Not Available channel contributes around 6,000 repeat customers.  
-            - BSearch generates approximately 4,500 repeat customers.  
-            - SocialBook contributes very few repeat customers.  
-            - Search channels significantly outperform social in retention.  
-
-            **Insight:** Paid Search is effective not only for acquisition but also for retention.
             """)
 
     st.markdown("<hr style='border:2px solid black'>", unsafe_allow_html=True) 

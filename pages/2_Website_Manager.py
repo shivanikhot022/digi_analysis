@@ -31,6 +31,33 @@ st.markdown("""
     background-color: #055296;
 }
 
+
+/* Remove column padding completely */
+[data-testid="column"] {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+}
+
+/* Reduce space inside metric */
+[data-testid="stMetric"] {
+    padding: 5px 5px !important;
+}
+
+/* Reduce metric value size */
+[data-testid="stMetricValue"] {
+    font-size: 36px !important;
+    font-weight:600 !important;
+}
+
+[data-testid="stMetricLabel"] {
+    font-size: 16px !important;
+}
+
+/* Optional: reduce delta size */
+[data-testid="stMetricDelta"] {
+    font-size: 12px !important;
+}
+
 /* Sidebar text */
 [data-testid="stSidebar"] label,
 [data-testid="stSidebar"] span,
@@ -95,10 +122,13 @@ if year:
     fil_sessions = fil_sessions[fil_sessions["Year"].isin(year)]
     fil_orders = fil_orders[fil_orders["Year"].isin(year)]
 
-month = st.sidebar.multiselect("Month", sorted(fil_sessions["MonthName"].dropna().unique()))
+month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun","Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+available_months = fil_orders["MonthShort"].dropna().unique()
+sorted_months = [m for m in month_order if m in available_months]
+month = st.sidebar.multiselect("Month", sorted_months)
 if month:
-    fil_sessions = fil_sessions[fil_sessions["MonthName"].isin(month)]
-    fil_orders = fil_orders[fil_orders["MonthName"].isin(month)]
+    fil_sessions = fil_sessions[fil_sessions["MonthShort"].isin(month)]
+    fil_orders = fil_orders[fil_orders["MonthShort"].isin(month)]
 
 device = st.sidebar.multiselect("Device Type", sorted(fil_sessions["device_type"].dropna().unique()))
 if device:
@@ -131,14 +161,15 @@ with tab1:
     total_orders = fil_orders["order_id"].nunique()
     total_visitors = fil_sessions["user_id"].nunique()
     total_revenue = fil_orders["total_net_revenue"].sum()
+    total_gross_revenue=fil_orders["price_usd"].sum()
     converted_sessions = fil_orders["website_session_id"].nunique()
     conversion_rate = converted_sessions / total_sessions if total_sessions else 0
-    new_sessions = fil_sessions[fil_sessions["is_repeat_session"] == 0]["website_session_id"].nunique()
     repeat_sessions = fil_sessions[fil_sessions["is_repeat_session"] == 1]["website_session_id"].nunique()
+    new_sessions =total_sessions-repeat_sessions
     repeat_session_rate = repeat_sessions / total_sessions if total_sessions else 0
     revenue_per_session = total_revenue / total_sessions if total_sessions else 0
     repeat_visitors=fil_sessions[fil_sessions["is_repeat_session"]==1]["user_id"].nunique()
-    new_visitors=fil_sessions[fil_sessions["is_repeat_session"]==0]["user_id"].nunique()
+    new_visitors=total_visitors-repeat_visitors
     sessions_by_year = (sessions.groupby("Year")["website_session_id"].nunique().reset_index(name="sessions").sort_values("Year"))
     sessions_by_year["session_ly"] = sessions_by_year["sessions"].shift(1)
     sessions_by_year["yoy"] = ((sessions_by_year["sessions"] - sessions_by_year["session_ly"])/ sessions_by_year["session_ly"])
@@ -150,16 +181,29 @@ with tab1:
     # latest_year = sessions_by_year["Year"].max()
     # session_last_year = sessions_by_year.loc[sessions_by_year["Year"] == latest_year, "previous_sessions"].values[0]
     # avg_session_yoy_growth = sessions_by_year["yoy_growth"].mean(skipna=True)
-    col1,col2,col3,col4,col5,col6,col7, col8 = st.columns(8)
+    no_filters = (
+        not year and not month and not device and not session and not product_name and not pageview_url)
+    if no_filters:
+        bounce_sessions = 211640
+        bounce_rate = 0.4476
+    else:
+        page_counts = (fil_pageviews.groupby("website_session_id").size().reset_index(name="pageviews"))
+        session_df = fil_sessions[["website_session_id"]].drop_duplicates().merge(page_counts,on="website_session_id",how="left")
+        session_df["pageviews"] = session_df["pageviews"].fillna(0)
+        bounce_sessions = session_df.loc[session_df["pageviews"] == 1,"website_session_id"].nunique()
+        bounce_rate = bounce_sessions / total_sessions if total_sessions else 0
+    col1,col2,col3,col4,col5 = st.columns(5)
     col1.metric("Total Sessions", format_num(total_sessions))
     col2.metric("Total Orders", format_num(total_orders))
     col3.metric("Total Visitors",format_num(total_visitors))
-    col4.metric("Revenue Per Session", f"{revenue_per_session:.2f}")
-    col5.metric("New Sessions", format_num(new_sessions))
+    col4.metric("Net Revenue Per Session", f"{revenue_per_session:.2f}")
+    col5.metric("One Time Sessions", format_num(new_sessions))
+    col6,col7, col8,col9,col10=st.columns(5)
     col6.metric("Repeat Session %", f"{repeat_session_rate:.2%}")
     col7.metric("Repeat Visitors", format_num(repeat_visitors))
-    col8.metric("Session LY", format_num(total_session_ly))
-    
+    col8.metric("Avg Session Per User",f"{total_sessions/total_visitors if total_visitors else 0:.2f}")
+    col9.metric("Bounce Rate", f"{bounce_rate:.2%}")
+    col10.metric("One Time Visitors", format_num(new_visitors))
     st.markdown("<hr style='border:2px solid black'>", unsafe_allow_html=True) 
     # Sessions & Conversion by Month
     st.subheader("Sessions & Conversion Rate by Month")
@@ -220,7 +264,7 @@ with tab1:
             """)
     with col2:
         #Revenue per Session Type by Product
-        st.subheader("Revenue per Session Type by Product")
+        st.subheader("Net Revenue per Session Type by Product")
         df = (fil_orders[["website_session_id","product_name","total_net_revenue"]].merge(fil_sessions[["website_session_id","session_type"]],on="website_session_id", how="left"))
 
         df = df.groupby(["session_type","product_name"])["total_net_revenue"] \
@@ -355,19 +399,17 @@ with tab1:
 
     with col1:
         st.subheader("Sessions by Channel")
-        df = fil_sessions.groupby("utm_campaign")["website_session_id"].nunique().reset_index()
+        df = fil_sessions.groupby("channel_name")["website_session_id"].nunique().reset_index()
         fig, ax = plt.subplots(figsize=(5,4))
-        ax.pie(df["website_session_id"], labels=df["utm_campaign"], autopct="%1.1f%%")
+        ax.pie(df["website_session_id"], labels=df["channel_name"], autopct="%1.1f%%")
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
-            - Nonbrand channel dominates traffic with 71.4% share.
-            - Not available contributes 17.6% of sessions.
-            - Brand traffic contributes 8.7%.
-            - Desktop targeted and pilot channels contribute around 1% each.
-            - Traffic is heavily dependent on nonbrand acquisition.
-
-            **Insight:** Brand channel growth could reduce dependency on paid nonbrand traffic.
+            - Paid Search dominates traffic with over 80% contribution.
+            - Direct traffic contributes around 17–18% of sessions.
+            - Paid Social contributes very little (~2–3%).
+            
+            **Insight:** The platform is highly dependent on paid channels for traffic. Organic and social channels are underutilized, increasing customer acquisition cost risk.
             """)
 
 
@@ -418,7 +460,7 @@ with tab2:
 
     converted_sessions = fil_orders["website_session_id"].nunique()
     conversion_rate = converted_sessions / total_sessions if total_sessions else 0
-
+    session_per_user=total_sessions/total_visitors
     col1,col2,col3,col4, col5, col6, col7= st.columns(7)
     col1.metric("Total Sessions",format_num(total_sessions))
     col6.metric("Bounce Rate", f"{bounce_rate:.2%}")
@@ -426,7 +468,7 @@ with tab2:
     col3.metric("Conversion Rate", f"{conversion_rate:.2%}")
     col4.metric("Avg Pages Per Session", f"{avg_pages:.2f}")
     col5.metric("Converted Sessions",format_num( converted_sessions))
-    col7.metric("Avg Session YOY Growth",f"{avg_yoy:.2%}")
+    col7.metric("Avg Session per User",f"{session_per_user:.2f}")
     st.markdown("<hr style='border:2px solid black'>", unsafe_allow_html=True) 
     #conversion rate by month
     fig, ax = plt.subplots(figsize=(8,3))

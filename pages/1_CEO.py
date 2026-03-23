@@ -32,6 +32,33 @@ st.markdown("""
     background-color: #055296;
 }
 
+
+/* Remove column padding completely */
+[data-testid="column"] {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+}
+
+/* Reduce space inside metric */
+[data-testid="stMetric"] {
+    padding: 5px 5px !important;
+}
+
+/* Reduce metric value size */
+[data-testid="stMetricValue"] {
+    font-size: 36px !important;
+    font-weight:600 !important;
+}
+
+[data-testid="stMetricLabel"] {
+    font-size: 16px !important;
+}
+
+/* Optional: reduce delta size */
+[data-testid="stMetricDelta"] {
+    font-size: 12px !important;
+}
+
 /* Sidebar text */
 [data-testid="stSidebar"] label,
 [data-testid="stSidebar"] span,
@@ -62,6 +89,8 @@ st.markdown("""
 [data-testid="stSidebar"] .stButton > button:hover {
     background-color: #222222 !important;
 }
+
+
 
 </style>
 """, unsafe_allow_html=True)
@@ -95,20 +124,27 @@ if year:
     fil_orders = fil_orders[fil_orders["Year"].isin(year)]
     fil_sessions = fil_sessions[fil_sessions["Year"].isin(year)]
 
-month = st.sidebar.multiselect("Month", sorted(fil_orders["MonthName"].dropna().unique()))
+month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun","Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+available_months = fil_orders["MonthShort"].dropna().unique()
+sorted_months = [m for m in month_order if m in available_months]
+month = st.sidebar.multiselect("Month", sorted_months)
 if month:
-    fil_orders = fil_orders[fil_orders["MonthName"].isin(month)]
-    fil_sessions=fil_sessions[fil_sessions["MonthName"].isin(month)]
-
+    fil_orders = fil_orders[fil_orders["MonthShort"].isin(month)]
+    fil_sessions = fil_sessions[fil_sessions["MonthShort"].isin(month)]
+    
 day_type = st.sidebar.multiselect("Day Type",sorted(fil_orders["DayType"].dropna().unique()))
 if day_type:
     fil_orders = fil_orders[fil_orders["DayType"].isin(day_type)]
     fil_sessions=fil_sessions[fil_sessions["DayType"].isin(day_type)]
     
-day_name = st.sidebar.multiselect("Day Name",sorted(fil_orders["DayName"].dropna().unique()))
+day_order = ["Monday", "Tuesday", "Wednesday","Thursday", "Friday", "Saturday", "Sunday"]
+available_days = fil_orders["DayName"].dropna().unique()
+sorted_days = [d for d in day_order if d in available_days]
+day_name = st.sidebar.multiselect("Day Name", sorted_days)
 if day_name:
     fil_orders = fil_orders[fil_orders["DayName"].isin(day_name)]
-    fil_sessions=fil_sessions[fil_sessions["DayName"].isin(day_name)]
+    fil_sessions = fil_sessions[fil_sessions["DayName"].isin(day_name)]
+    
 utm_campaign = st.sidebar.multiselect("UTM Campaign",sorted(fil_sessions["utm_campaign"].dropna().unique()))
 if utm_campaign:
     fil_sessions = fil_sessions[fil_sessions["utm_campaign"].isin(utm_campaign)]
@@ -121,7 +157,6 @@ tab1, tab2 = st.tabs(["📊 Executive Overview - Business Performance", "📦Pro
 
 # TAB 1 —Executive Overview – Business Performance
 with tab1:
-    #st.write("pageviews memory:", pageviews.memory_usage(deep=True).sum() / 1024**2, "MB") 
     refund_orders = fil_orders.merge(datetable, left_on="order_item_date", right_on="Date", how="right",suffixes=("","_dt"))
     total=refund_orders["total_net_revenue"].sum()
     tota=refund_orders["refund_amount_usd"].sum()
@@ -130,11 +165,15 @@ with tab1:
     total_orders = fil_orders["order_id"].nunique()
     total_sessions = fil_sessions["website_session_id"].nunique()
     total_revenue = fil_orders["total_net_revenue"].sum()
-    total_refund=fil_orders["refund_amount_usd"].sum()
+    total_refund_items=fil_orders["order_item_refund_id"].nunique()
     total_cost = fil_orders["actual_cost"].sum()
     total_profit = total_revenue - total_cost
     total_customers = fil_orders["user_id"].nunique()
     refunded_orders=fil_orders[fil_orders["refund_amount_usd"]>0]["order_id"].nunique()
+    total_items=fil_orders["order_item_id"].nunique()
+    refund_orders=fil_orders["order_id_refund"].dropna().nunique()
+    refund_order_rate=refund_orders/total_orders if total_orders else 0
+    total_refund=fil_orders["refund_amount_usd"].sum()
     # Repeat customers
     orders_per_customer = fil_orders.groupby("user_id")["order_id"].nunique()
     repeat_customers = (orders_per_customer == 2).sum()
@@ -143,7 +182,7 @@ with tab1:
     one_time_customers=(orders_per_customer == 1).sum()
     one_time_customer_pct = one_time_customers / total_customers if total_customers != 0 else 0
     profit_margin = total_profit / total_revenue if total_revenue else 0
-    refund_rate = total_refund/ total_revenue if total_revenue else 0
+    refund_item_rate = total_refund_items/ total_items if total_items else 0
     #refund_rate=refunded_orders/total_orders
     #avg revenue growth rate    
     yearly_revenue = (fil_orders.groupby("Year").agg(total_revenue=("total_net_revenue", "sum")).reset_index().sort_values("Year"))
@@ -156,20 +195,24 @@ with tab1:
         
     st.markdown("<hr style='border:2px solid black'>", unsafe_allow_html=True) 
     #metrics
-    col1,col2,col3,col4,col5,col6,col7,col8= st.columns(8)
+    col1,col2,col3,col4,col5= st.columns(5)
+    col6,col7,col8,col9,col10= st.columns(5)
 
     col1.metric("Total Orders", format_num(total_orders))
-    col2.metric("Total Revenue", format_num(total_revenue))
+    col2.metric("Total Net Revenue", format_num(total_revenue))
     col3.metric("Total Sessions", format_num(total_sessions))
-    col4.metric("Profit Margin %", f"{profit_margin:.2%}")
-    col5.metric("Refund Rate %", f"{refund_rates:.2%}")
-    col6.metric("Repeat Customer %", f"{repeat_customer_pct:.2%}")
-    col7.metric("One Time Customers%", f"{one_time_customer_pct:.2%}")
-    col8.metric("Avg YOY Growth %", f"{avg_revenue_yoy*100:.2f}%")
+    col4.metric("Total Customers", format_num(total_customers))
+    col5.metric("Profit Margin %", f"{profit_margin:.2%}")
+    col6.metric("Refund Item Rate %", f"{refund_item_rate:.2%}")
+    col7.metric("Repeat Customer %", f"{repeat_customer_pct:.2%}")
+    col8.metric("One Time Customers%", f"{one_time_customer_pct:.2%}")
+    col9.metric("Refund Order Rate %", f"{refund_order_rate*100:.2f}%")
+    col10.metric("Total Order Items",format_num(total_items))
+    
 
     st.markdown("<hr style='border:2px solid black'>", unsafe_allow_html=True) 
     #revenueand profit margin by month
-    st.subheader("Total Revenue and Profit Margin By Month")
+    st.subheader("Total Net Revenue and Profit Margin By Month")
     total_revenue_by_month = (fil_orders.groupby("MonthShort").agg(total_net_revenue=("total_net_revenue","sum"),total_profit=("profit","sum")).reset_index())
     month_order = [ "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec" ]
     total_revenue_by_month["MonthShort"] = pd.Categorical(total_revenue_by_month["MonthShort"],categories=month_order,ordered=True)
@@ -206,6 +249,7 @@ with tab1:
     with col1:
         st.subheader("Total Orders by Year")
         df = fil_orders.groupby("Year")["order_id"].nunique().reset_index()
+        df = df[df["Year"] != df["Year"].max()]
         fig, ax = plt.subplots(figsize=(5,3.4))
         ax.bar(df["Year"].astype(str), df["order_id"],color="#055296")
         ax.grid(axis="y", linestyle="--", alpha=0.3)
@@ -307,6 +351,7 @@ with tab1:
         st.subheader("Total Profit vs Total Cost by Year")
         yearly_data = (fil_orders.groupby("Year").agg(Total_Profit=("profit", "sum"),Total_Cost=("actual_cost", "sum")).reset_index())
         yearly_data["Year"]=yearly_data["Year"].astype(int)
+        yearly_data = yearly_data[yearly_data["Year"] != yearly_data["Year"].max()]
         x = np.arange(len(yearly_data["Year"])) 
         width = 0.35 
         fig, ax = plt.subplots(figsize=(5,5))
@@ -363,29 +408,28 @@ with tab1:
     col1,col2 = st.columns(2)
 
     with col1:
-        st.subheader("Revenue by Channel")
-        channel_df = fil_sessions[["website_session_id", "utm_campaign"]].merge(fil_orders[["website_session_id", "total_net_revenue"]],on="website_session_id",how="inner")
-        df = channel_df.groupby("utm_campaign")["total_net_revenue"].sum().reset_index()
+        st.subheader("Net Revenue by Traffic Source")
+        channel_df = fil_sessions[["website_session_id", "utm_source"]].merge(fil_orders[["website_session_id", "total_net_revenue"]],on="website_session_id",how="inner")
+        df = channel_df.groupby("utm_source")["total_net_revenue"].sum().reset_index()
 
         fig, ax = plt.subplots(figsize=(6,6))
-        ax.barh(df["utm_campaign"], df["total_net_revenue"])
+        ax.barh(df["utm_source"], df["total_net_revenue"])
         ax.set_xlabel("Revenue")
         ax.grid(axis="x", linestyle="--", alpha=0.3)
         plt.tight_layout()
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
-            - Nonbrand channel generates the highest revenue at approximately $1.25M, dominating all other channels.
-            - “Not Available” contributes around $0.35M, showing a noticeable tracking gap.
-            - Brand channel contributes approximately $0.20M, significantly lower than Nonbrand.
-            - Desktop Targeted and Pilot campaigns contribute very minimal revenue.
-            - Revenue is heavily concentrated in Nonbrand campaigns, increasing dependency risk.
-
-            **Insight:** Revenue performance is highly dependent on Nonbrand campaigns, indicating strong acquisition through generic search traffic.
+            - gsearch contributes the highest revenue, exceeding 1.2M, dominating all other channels.
+            - bsearch generates moderate revenue, around 300K.
+            - "not available" traffic still contributes a noticeable share (~350K), indicating tracking gaps.
+            - socialbook contributes very minimal revenue.
+            
+            **Insight:** Paid search (especially gsearch) is the primary revenue driver. However, "not available" traffic suggests poor tracking/attribution, which can hide true performance insights.
             """)
     with col2:
         #Revenue by Customer Type
-        st.subheader("Revenue By Customer Type")
+        st.subheader("Net Revenue By Customer Type")
         revenue_user = fil_orders.groupby("user_id")["order_id"].nunique().reset_index(name="order_count")
         revenue_user["customer_typess"] = np.where(revenue_user["order_count"] >= 2, "Repeat Customer", "One Time Customer")
         fil_orders = fil_orders.merge(revenue_user[["user_id","customer_typess"]], on="user_id", how="left")
@@ -522,26 +566,21 @@ def get_profit_margin_yoy(orders_fact, fil_orders, selected_years):
     return current_margin, ly_margin, profit_margin_yoy, avg_margin_yoy
 # TAB 2 — PRODUCT PERFORMANCE
 with tab2:
-    col1,col2,col3,col4,col5,col6,col7, col8 = st.columns(8)
+    total_products=fil_orders["product_id"].nunique()
+    total_gross_revenue=total_revenue+total_refund
+    gross_profit=total_gross_revenue-total_cost
+    col1,col2,col3,col4,col5 = st.columns(5)
     col1.metric("Total Profit", format_num(total_profit))
     col2.metric("Total Cost", format_num(total_cost))
     col3.metric("Total Refund", format_num(fil_orders["refund_amount_usd"].sum()))
-    col5.metric("Avg Order Value", f"{total_revenue/total_orders if total_orders else 0:.2f}")
-    col7.metric("Refunded Item Cost", format_num(fil_orders["order_item_refund_cost"].sum()))
-    no_filters_selected = (not year and not month and not day_type and not day_name and not utm_campaign)
-    if no_filters_selected:
-        col4.metric("Profit Margin %", "62.75%")
-        col6.metric("Profit Margin LY", "62.60%")
-        col8.metric("Average Profit YoY %", "0.98%")
-    else:
-        current_margin, previous_margin, profit_margin_yoy, avg_margin_yoy = get_profit_margin_yoy(orders_fact,fil_orders,year)
-        col4.metric("Profit Margin %",f"{current_margin:.2%}")
-        if previous_margin is not None:
-            col6.metric("Profit Margin LY",f"{previous_margin:.2%}")
-        else:
-            col6.metric("Profit Margin LY", "No Data")
-            col8.metric("Average Profit YoY %",f"{avg_margin_yoy:.2%}")
-
+    col4.metric("Avg Order Value", f"{total_gross_revenue/total_orders if total_orders else 0:.2f}")
+    col5.metric("Refunded Item Cost", format_num(fil_orders["order_item_refund_cost"].sum()))
+    col6,col7, col8,col9,col10=st.columns(5)
+    col6.metric("Profit Margin %", f"{profit_margin:.2%}")
+    col7.metric("Refund Amount Rate",f"{refund_rates:.2%}")
+    col8.metric("Total Refunded Items",format_num(total_refund_items))
+    col9.metric("Profit Percentage",f"{total_profit/total_cost if total_cost else 0:.2%}")
+    col10.metric("Avg Profit Per Customer", f"{gross_profit/total_customers if total_customers else 0:.2f}")
     # col1.metric("Total Profit", format_num(total_profit))
     # col2.metric("Total Cost", format_num(total_cost))
     # col3.metric("Total Refund", format_num(fil_orders["refund_amount_usd"].sum()))
@@ -606,8 +645,8 @@ with tab2:
     with col2:
         #Refund Rate by Product
         st.subheader("Refund Rate by Product")
-        refund_product = (fil_orders.groupby("product_name").agg(total_refund=("refund_amount_usd","sum"),total_revenue=("total_net_revenue","sum")).reset_index())
-        refund_product["refund_rate"]=(refund_product["total_refund"]/refund_product["total_revenue"])
+        refund_product = (fil_orders.groupby("product_name").agg(total_refund_items=("order_item_refund_id","nunique"),total_items=("order_item_id","nunique")).reset_index())
+        refund_product["refund_rate"]=(refund_product["total_refund_items"]/refund_product["total_items"])*100
         fig, ax = plt.subplots(figsize=(6,5.5))
         ax.barh(refund_product["product_name"],refund_product["refund_rate"],color="#055296")
         ax.set_xlabel("Refund Rate")
@@ -616,11 +655,14 @@ with tab2:
         with st.expander("Chart Explanation", expanded=False):
             
             st.markdown("""
-            - The Birthday Sugar Panda has the highest refund rate at approximately 7.5%.
-            - The Original Mr. Fuzzy shows a refund rate around 5%.
-            - The Forever Love Bear has a refund rate of around 2%–3%.
-            - The Hudson River Mini Bear has the lowest refund rate at approximately 1%–2%.
-            - Higher refund rates may indicate product quality or expectation mismatches.
+            -The Birthday Sugar Panda (~7%)
+            -Highest refund rate among all products → indicates potential issues with product quality, expectations mismatch, or delivery experience.
+            -The Original Mr. Fuzzy (~5%)
+            -Moderate refund rate → generally stable but still needs monitoring to prevent escalation.
+            -The Forever Love Bear (~2.5%)
+            -Low refund rate → good performance, customers are mostly satisfied.
+            -The Hudson River Mini Bear (~1%)
+            -Lowest refund rate → best-performing product in terms of customer satisfaction and reliability.
 
             **Insight:** Sugar Panda requires review to reduce return rates and improve customer satisfaction.
             """)
@@ -689,11 +731,12 @@ with tab2:
     with col1:
         #Primary VS Non Primary Products Refund Rate
         st.subheader("Primary VS Non Primary Products Refund Rate")
-        yearly_refund = (fil_orders.groupby(["Year","is_primary_item"]).agg( Total_Refund=("refund_amount_usd", "sum"),Total_Revenue=("total_net_revenue", "sum")).reset_index())
-        yearly_refund["Refund_Rate"] = (yearly_refund["Total_Refund"] /yearly_refund["Total_Revenue"])
+        yearly_refund = (fil_orders.groupby(["Year","is_primary_item"]).agg(total_refund_items=("order_item_refund_id","nunique"),total_items=("order_item_id","nunique")).reset_index())
+        yearly_refund = yearly_refund[yearly_refund["Year"] != yearly_refund["Year"].max()]
+        yearly_refund["Refund_Rate"] = (yearly_refund["total_refund_items"] /yearly_refund["total_items"])
         yearly_refund["is_primary_item"] = yearly_refund["is_primary_item"].map({1:"Primary Item",0:"Non Primary Item"})
 
-        fig, ax = plt.subplots(figsize=(6,6))
+        fig, ax = plt.subplots(figsize=(6,6.3))
         sns.barplot(x="Year",y="Refund_Rate",hue="is_primary_item",data=yearly_refund,palette=["#055296","#118DFF"],ax=ax)
         ax.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
         ax.grid(axis="y", linestyle="--", alpha=0.3)
@@ -701,7 +744,8 @@ with tab2:
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
             - Primary products consistently show higher refund rates than non-primary products.
-            - In 2012, primary refund rate was approximately 7%.
+            - In 2012, primary refund rate was approximately 6.5%.
+            - In 2013, primary refund rate was around 4.5%.
             - In 2014, primary refund rate was around 5%, while non-primary was around 3%.
             - In 2015, primary refund rate dropped to approximately 3%, showing improvement.
             - Non-primary items maintain lower overall refund risk.
@@ -712,10 +756,10 @@ with tab2:
 
     with col2:
         #Primary Vs Cross Selling Products By Revenue
-        st.subheader("Primary Vs Cross Selling Products By Revenue")
+        st.subheader("Primary Vs Cross Selling Products By Net Revenue")
         revenue_primary_items=(fil_orders.groupby("is_primary_item")["total_net_revenue"].sum().reset_index())
         revenue_primary_items["is_primary_item"] = revenue_primary_items["is_primary_item"].map({0: "Cross Selling Product",1: "Primary Product"})
-        fig, ax = plt.subplots(figsize=(6,5.6))
+        fig, ax = plt.subplots(figsize=(6,5.4))
         ax.pie(revenue_primary_items["total_net_revenue"],labels=revenue_primary_items["is_primary_item"],autopct="%1.1f%%",startangle=90)
         center_cir=plt.Circle((0,0),0.50,fc="white")
         fig.gca().add_artist(center_cir)
