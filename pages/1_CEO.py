@@ -149,7 +149,7 @@ utm_campaign = st.sidebar.multiselect("UTM Campaign",sorted(fil_sessions["utm_ca
 if utm_campaign:
     fil_sessions = fil_sessions[fil_sessions["utm_campaign"].isin(utm_campaign)]
     
-fil_orders = fil_orders[fil_orders["website_session_id"].isin(fil_sessions["website_session_id"])]
+
 
 st.title("🧸Dashboard For CEO")
 #tabs
@@ -287,12 +287,14 @@ with tab1:
     #gross revenue over year and month
     fil_orders['Year'] = fil_orders['Year'].astype(int)
     year_Gross_revenue = fil_orders.groupby("Year")['price_usd'].sum().sort_index().reset_index()
+    year_Gross_revenue = year_Gross_revenue.iloc[:-1]
     year_Gross_revenue['Year'] = year_Gross_revenue['Year'].astype(int)
     previous_year_revenue = year_Gross_revenue['price_usd'].shift(1)
     YOY_change = ((year_Gross_revenue['price_usd']-previous_year_revenue)/previous_year_revenue)*100
     YOY_change = YOY_change.fillna(0)
     Year_wise_Revenue_change = pd.DataFrame({'Years':year_Gross_revenue["Year"],'YOY_change':YOY_change})
     Year_wise_Revenue_change['Years'] = Year_wise_Revenue_change['Years'].astype('int')
+    
 
 
     month_Gross_revenue = fil_orders.groupby('MonthNumber')['price_usd'].sum().sort_index().reset_index()
@@ -569,12 +571,13 @@ with tab2:
     total_products=fil_orders["product_id"].nunique()
     total_gross_revenue=total_revenue+total_refund
     gross_profit=total_gross_revenue-total_cost
+    refund_cost=orders_fact["refund_items_cost"].sum()
     col1,col2,col3,col4,col5 = st.columns(5)
     col1.metric("Total Profit", format_num(total_profit))
     col2.metric("Total Cost", format_num(total_cost))
     col3.metric("Total Refund", format_num(fil_orders["refund_amount_usd"].sum()))
     col4.metric("Avg Order Value", f"{total_gross_revenue/total_orders if total_orders else 0:.2f}")
-    col5.metric("Refunded Item Cost", format_num(fil_orders["order_item_refund_cost"].sum()))
+    col5.metric("Refunded Item Cost", format_num(refund_cost))
     col6,col7, col8,col9,col10=st.columns(5)
     col6.metric("Profit Margin %", f"{profit_margin:.2%}")
     col7.metric("Refund Amount Rate",f"{refund_rates:.2%}")
@@ -699,9 +702,9 @@ with tab2:
     with col2:
         # Orders per user
         orders_per_user = fil_orders.groupby("user_id")["order_id"].nunique().reset_index(name="order_count")
-        orders_per_user["cust_type"] = np.where(orders_per_user["order_count"] > 2,"Repeat Customer","One Time Customer")
+        orders_per_user["cust_type"] = np.where(orders_per_user["order_count"] > 1,"Repeat Customer","One Time Customer")
         fil_orders = fil_orders.merge(orders_per_user[["user_id","cust_type"]],on="user_id",how="left")
-        cust_seg = fil_orders.groupby(["MonthShort","cust_type"])["customer_id"].count().reset_index(name="cust_counts")
+        cust_seg = fil_orders.groupby(["MonthShort","cust_type"])["user_id"].count().reset_index(name="cust_counts")
         month_order = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
         cust_seg["MonthShort"] = pd.Categorical(cust_seg["MonthShort"],categories=month_order,ordered=True)
         cust_seg = cust_seg.sort_values("MonthShort")
@@ -731,11 +734,14 @@ with tab2:
     with col1:
         #Primary VS Non Primary Products Refund Rate
         st.subheader("Primary VS Non Primary Products Refund Rate")
-        yearly_refund = (fil_orders.groupby(["Year","is_primary_item"]).agg(total_refund_items=("order_item_refund_id","nunique"),total_items=("order_item_id","nunique")).reset_index())
-        yearly_refund = yearly_refund[yearly_refund["Year"] != yearly_refund["Year"].max()]
-        yearly_refund["Refund_Rate"] = (yearly_refund["total_refund_items"] /yearly_refund["total_items"])
-        yearly_refund["is_primary_item"] = yearly_refund["is_primary_item"].map({1:"Primary Item",0:"Non Primary Item"})
-
+        yearly_refund = (orders_fact.groupby(["Year","is_primary_item"]).agg(total_items=("order_item_id","nunique"),total_refund_items=("order_item_refund_id", lambda x: x.notna().sum())).reset_index())
+        # calculate refund rate first
+        yearly_refund["Refund_Rate"] = (yearly_refund["total_refund_items"] / yearly_refund["total_items"])
+        # map category
+        yearly_refund["is_primary_item"] = yearly_refund["is_primary_item"].map({1: "Primary Item",0: "Non Primary Item"})
+        # ✅ NOW remove last year (for reporting)
+        current_year = yearly_refund["Year"].max()
+        yearly_refund = yearly_refund[yearly_refund["Year"] < current_year]
         fig, ax = plt.subplots(figsize=(6,6.3))
         sns.barplot(x="Year",y="Refund_Rate",hue="is_primary_item",data=yearly_refund,palette=["#055296","#118DFF"],ax=ax)
         ax.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
@@ -756,9 +762,9 @@ with tab2:
 
     with col2:
         #Primary Vs Cross Selling Products By Revenue
-        st.subheader("Primary Vs Cross Selling Products By Net Revenue")
+        st.subheader("Primary Vs Non Primary Products By Net Revenue")
         revenue_primary_items=(fil_orders.groupby("is_primary_item")["total_net_revenue"].sum().reset_index())
-        revenue_primary_items["is_primary_item"] = revenue_primary_items["is_primary_item"].map({0: "Cross Selling Product",1: "Primary Product"})
+        revenue_primary_items["is_primary_item"] = revenue_primary_items["is_primary_item"].map({0: "Non Primary Product",1: "Primary Product"})
         fig, ax = plt.subplots(figsize=(6,5.4))
         ax.pie(revenue_primary_items["total_net_revenue"],labels=revenue_primary_items["is_primary_item"],autopct="%1.1f%%",startangle=90)
         center_cir=plt.Circle((0,0),0.50,fc="white")

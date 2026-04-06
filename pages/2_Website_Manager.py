@@ -354,7 +354,7 @@ with tab1:
         
     col1,col2=st.columns(2)
     with col1:
-        st.subheader("user by Device Type")
+        st.subheader("Users by Device Type")
         user_by_device=fil_sessions.groupby("device_type")["user_id"].nunique().reset_index()
         fig, ax = plt.subplots(figsize=(4,4))
         ax.pie(user_by_device["user_id"],labels=user_by_device["device_type"],autopct="%1.1f%%",startangle=90)

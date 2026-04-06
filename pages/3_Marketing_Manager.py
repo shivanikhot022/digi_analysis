@@ -149,6 +149,7 @@ with tab1:
     repeat_visitors = fil_sessions[fil_sessions["is_repeat_session"] == 1]["user_id"].nunique()
     new_visitors=total_visitors-repeat_visitors
     new_visitors_pct = new_visitors / total_visitors if total_visitors else 0
+    repeat_visitors_pct = repeat_visitors/ total_visitors if total_visitors else 0
     converted_sessions = fil_orders["website_session_id"].nunique()
     total_sessions = fil_sessions["website_session_id"].nunique()
     gross_revenue=fil_orders["total_net_revenue"].sum()+fil_orders["refund_amount_usd"].sum()
@@ -183,7 +184,7 @@ with tab1:
     col1.metric("Total Visitors", format_num(total_visitors))
     col2.metric("One Time Visitors %", f"{new_visitors_pct:.2%}")
     col3.metric("Conversion Rate %", f"{conversion_rate:.2%}")
-    col4.metric("Cart Abandonment Rate", f"{cart_abandonment_rate:.2%}")
+    col4.metric("Repeat Visitors %", f"{repeat_visitors_pct:.2%}")
     col5, col6, col7, col8=st.columns(4)
     col5.metric("Top Traffic Source by Session", top_channel)
     col6.metric("Gsearch Conversion Rate", f"{top_channel_conv:.2%}")

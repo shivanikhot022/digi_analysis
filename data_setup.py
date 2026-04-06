@@ -98,7 +98,8 @@ def get_data():
     orders_fact = orders_fact.merge(customer_360,left_on="user_id",right_on="customer_id",how="left")
     orders_fact = orders_fact.merge(order_item_refunds,on="order_item_id",how="left",suffixes=("","_refund"))
     #orders_fact=orders_fact.merge(datetable[["Date","Year"]],left_on="order_item_date",right_on="Date",how="right",suffixes=("","_dt"))
-
+    refund_ids = set(order_item_refunds["order_item_id"])
+    orders_fact["refund_items_cost"] = np.where(orders_fact["order_item_id"].isin(refund_ids),orders_fact["cogs_usd"],0)
     del orders
     del products
     del order_item_refunds
