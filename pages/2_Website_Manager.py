@@ -252,6 +252,8 @@ with tab1:
         fig, ax = plt.subplots()
         ax.bar(df["device_type"], df["conversion_rate"])
         ax.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+        ax.set_xlabel("Device Type")
+        ax.set_ylabel("Conversion Rate")
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
@@ -264,16 +266,17 @@ with tab1:
             """)
     with col2:
         #Revenue per Session Type by Product
-        st.subheader("Net Revenue per Session Type by Product")
-        df = (fil_orders[["website_session_id","product_name","total_net_revenue"]].merge(fil_sessions[["website_session_id","session_type"]],on="website_session_id", how="left"))
+        st.subheader("Total Revenue per Session Type by Product")
+        df = (fil_orders[["website_session_id","product_name","price_usd"]].merge(fil_sessions[["website_session_id","session_type"]],on="website_session_id", how="left"))
 
-        df = df.groupby(["session_type","product_name"])["total_net_revenue"] \
+        df = df.groupby(["session_type","product_name"])["price_usd"] \
        .sum().reset_index()
-        pivot_df = df.pivot(index="product_name", columns="session_type", values="total_net_revenue").fillna(0)
+        pivot_df = df.pivot(index="product_name", columns="session_type", values="price_usd").fillna(0)
 
         fig, ax = plt.subplots()
         pivot_df.plot(kind="bar", ax=ax)
         plt.xticks(rotation=15, ha="right")
+        ax.set_ylabel("Sessions")
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
@@ -427,6 +430,7 @@ with tab1:
         fig, ax = plt.subplots(figsize=(5,3.7))
         ax.bar(df["device_type"], df["bounce_rate"],color="#055296")
         ax.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+        ax.set_ylabel("Bounce Rate")
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
@@ -524,6 +528,7 @@ with tab2:
                 top_sessions["sessions"])
         ax.invert_yaxis()
         ax.grid(axis="x", linestyle="--", alpha=0.3)
+        ax.set_xlabel("Sessions")
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
@@ -543,6 +548,7 @@ with tab2:
         ax.bar(conversion_df["pageview_url"],conversion_df["conversion_rate"])
         ax.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
         ax.grid(axis="y", linestyle="--", alpha=0.3)
+        ax.set_ylabel("Conversion Rate")
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
@@ -563,6 +569,7 @@ with tab2:
         ax.xaxis.set_major_formatter(mtick.PercentFormatter(1.0))
         ax.invert_yaxis()
         ax.grid(axis="x", linestyle="--", alpha=0.3)
+        ax.set_xlabel("Bounce Rate")
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""

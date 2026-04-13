@@ -212,8 +212,8 @@ with tab1:
 
     st.markdown("<hr style='border:2px solid black'>", unsafe_allow_html=True) 
     #revenueand profit margin by month
-    st.subheader("Total Net Revenue and Profit Margin By Month")
-    total_revenue_by_month = (fil_orders.groupby("MonthShort").agg(total_net_revenue=("total_net_revenue","sum"),total_profit=("profit","sum")).reset_index())
+    st.subheader("Total Revenue and Profit Margin By Month")
+    total_revenue_by_month = (fil_orders.groupby("MonthShort").agg(total_revenue=("price_usd","sum"),total_profit=("profit","sum"),total_net_revenue=("total_net_revenue","sum")).reset_index())
     month_order = [ "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec" ]
     total_revenue_by_month["MonthShort"] = pd.Categorical(total_revenue_by_month["MonthShort"],categories=month_order,ordered=True)
     total_revenue_by_month = total_revenue_by_month.sort_values("MonthShort")
@@ -221,7 +221,7 @@ with tab1:
 
     fig, ax1 = plt.subplots(figsize=(8,3))
 
-    ax1.plot(total_revenue_by_month["MonthShort"],total_revenue_by_month["total_net_revenue"],label="Revenue",color="#055296",marker="o")
+    ax1.plot(total_revenue_by_month["MonthShort"],total_revenue_by_month["total_revenue"],label="Revenue",color="#055296",marker="o")
     ax1.set_ylabel("Revenue")
     ax2 = ax1.twinx()
     ax2.plot(total_revenue_by_month["MonthShort"],total_revenue_by_month["profit_margin"],label="profit_margin",color="#118DFF",marker="o")
@@ -253,6 +253,8 @@ with tab1:
         fig, ax = plt.subplots(figsize=(5,3.4))
         ax.bar(df["Year"].astype(str), df["order_id"],color="#055296")
         ax.grid(axis="y", linestyle="--", alpha=0.3)
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Total Orders")
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
@@ -377,10 +379,11 @@ with tab1:
 
             **Strategic Insight:** 2014 delivered the strongest profitability leverage across all years.
             """)  
-    with col2:  
+    with col2: 
+        total_price=fil_orders["price_usd"].sum() 
         total_refund_cost=fil_orders["order_item_refund_cost"].sum()  
         waterfall_analysis = pd.DataFrame({'Step':['Total_Revenue','Total_Cost','Total_Refunded_Amt','Refunded_items_cost','Profit'],
-                                        'Amount':[total_revenue,-total_cost,total_refund,-total_refund_cost,total_profit]})
+                                        'Amount':[total_price,-total_cost,total_refund,-total_refund_cost,total_profit]})
         waterfall_analysis["cumulative"]=waterfall_analysis["Amount"].cumsum
         fig,ax = plt.subplots(figsize =(6,6))
         st.subheader('Waterfall_Analysis')
@@ -410,13 +413,14 @@ with tab1:
     col1,col2 = st.columns(2)
 
     with col1:
-        st.subheader("Net Revenue by Traffic Source")
-        channel_df = fil_sessions[["website_session_id", "utm_source"]].merge(fil_orders[["website_session_id", "total_net_revenue"]],on="website_session_id",how="inner")
-        df = channel_df.groupby("utm_source")["total_net_revenue"].sum().reset_index()
+        st.subheader("Total Revenue by Traffic Source")
+        channel_df = fil_sessions[["website_session_id", "utm_source"]].merge(fil_orders[["website_session_id", "price_usd"]],on="website_session_id",how="inner")
+        df = channel_df.groupby("utm_source")["price_usd"].sum().reset_index()
 
         fig, ax = plt.subplots(figsize=(6,6))
-        ax.barh(df["utm_source"], df["total_net_revenue"])
+        ax.barh(df["utm_source"], df["price_usd"])
         ax.set_xlabel("Revenue")
+        ax.set_ylabel("Traffic Source")
         ax.grid(axis="x", linestyle="--", alpha=0.3)
         plt.tight_layout()
         st.pyplot(fig)
@@ -431,14 +435,14 @@ with tab1:
             """)
     with col2:
         #Revenue by Customer Type
-        st.subheader("Net Revenue By Customer Type")
+        st.subheader("Total Revenue By Customer Type")
         revenue_user = fil_orders.groupby("user_id")["order_id"].nunique().reset_index(name="order_count")
         revenue_user["customer_typess"] = np.where(revenue_user["order_count"] >= 2, "Repeat Customer", "One Time Customer")
         fil_orders = fil_orders.merge(revenue_user[["user_id","customer_typess"]], on="user_id", how="left")
-        customer_type_profit = fil_orders.groupby("customer_typess")["total_net_revenue"].sum().reset_index()
+        customer_type_profit = fil_orders.groupby("customer_typess")["price_usd"].sum().reset_index()
 
         fig, ax = plt.subplots(figsize=(6,6))
-        ax.bar(customer_type_profit["customer_typess"], customer_type_profit["total_net_revenue"], color="#055296")
+        ax.bar(customer_type_profit["customer_typess"], customer_type_profit["price_usd"], color="#055296")
         ax.set_xlabel("Customer Type")
         ax.set_ylabel("Revenue")
         ax.grid(axis="y", linestyle="--", color="black", alpha=0.3)
@@ -489,7 +493,7 @@ with tab1:
         fil_orders["order_created_at"] = pd.to_datetime(fil_orders["order_created_at"],errors="coerce")
         fil_orders = fil_orders.dropna(subset=["order_created_at"])
         reference_date = orders_fact["order_created_at"].max()
-        rfm = fil_orders.groupby("user_id").agg(Last_Order_Date=("order_created_at", "max"),Frequency=("order_id", "nunique"),Monetary=("total_net_revenue", "sum")).reset_index()
+        rfm = fil_orders.groupby("user_id").agg(Last_Order_Date=("order_created_at", "max"),Frequency=("order_id", "nunique"),Monetary=("price_usd", "sum")).reset_index()
         rfm["Recency"] = (reference_date - rfm["Last_Order_Date"]).dt.days
         rfm = rfm.dropna(subset=["Recency", "Frequency", "Monetary"])
         rfm["Recency_Score"] = pd.qcut( rfm["Recency"].rank(method="first"),3,labels=[3,2,1]).astype(int)
@@ -506,13 +510,14 @@ with tab1:
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
-            - Low Value Customers form the largest segment at 65.7%.
-            - High Value Customers represent 22.1% of total customers.
-            - Medium Value Customers account for only 12.3%.
-            - Customer base is heavily skewed toward low-value segments.
-            - Opportunity exists to convert Medium and Low value customers into High value through targeted campaigns.
+            - Low Value Customers form the largest segment at approximately 33.6%.
+            - Medium Value Customers account for around 33.3% of total customers.
+            - High Value Customers represent about 33.1% of the customer base.
+            - Customer distribution is almost evenly balanced across all three segments.
+            - No single segment dominates, indicating a well-distributed customer base.
+            - Opportunity exists to slightly increase High Value Customers through targeted retention and upselling strategies.
 
-            **Insight:** Majority of customers are low-value, highlighting strong need for upselling and loyalty programs.
+            Insight: The customer base is evenly spread, suggesting stable performance, but growth can be driven by converting Medium customers into High value customers.
             """)     
 
 def get_profit_margin_yoy(orders_fact, fil_orders, selected_years):
@@ -521,7 +526,7 @@ def get_profit_margin_yoy(orders_fact, fil_orders, selected_years):
     else:
         current_year = max(selected_years)
     last_year = current_year - 1
-    current_revenue = fil_orders["total_net_revenue"].sum()
+    current_revenue = fil_orders["price_usd"].sum()
     current_cost = fil_orders["actual_cost"].sum()
     current_margin = (current_revenue - current_cost) / current_revenue if current_revenue else 0
     ly_df = orders_fact.copy()
@@ -544,7 +549,7 @@ def get_profit_margin_yoy(orders_fact, fil_orders, selected_years):
 
     ly_df = ly_df[ly_df["website_session_id"].isin(base_sessions["website_session_id"])]
     ly_df = ly_df[ly_df["Year"] == last_year]
-    ly_revenue = ly_df["total_net_revenue"].sum()
+    ly_revenue = ly_df["price_usd"].sum()
     ly_cost = ly_df["actual_cost"].sum()
     ly_margin = (ly_revenue - ly_cost) / ly_revenue if ly_revenue else 0
     profit_margin_yoy = (
@@ -553,7 +558,7 @@ def get_profit_margin_yoy(orders_fact, fil_orders, selected_years):
     )
     yearly = (
         orders_fact.groupby("Year")
-        .agg(revenue=("total_net_revenue", "sum"),
+        .agg(revenue=("price_usd", "sum"),
              cost=("actual_cost", "sum"))
         .reset_index()
         .sort_values("Year")
@@ -653,6 +658,7 @@ with tab2:
         fig, ax = plt.subplots(figsize=(6,5.5))
         ax.barh(refund_product["product_name"],refund_product["refund_rate"],color="#055296")
         ax.set_xlabel("Refund Rate")
+        ax.set_ylabel("Products")
         ax.grid(axis="x", linestyle="--", color="black", alpha=0.3)
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
@@ -746,6 +752,7 @@ with tab2:
         sns.barplot(x="Year",y="Refund_Rate",hue="is_primary_item",data=yearly_refund,palette=["#055296","#118DFF"],ax=ax)
         ax.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
         ax.grid(axis="y", linestyle="--", alpha=0.3)
+        ax.set_ylabel("Refund Rate")
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
@@ -762,19 +769,19 @@ with tab2:
 
     with col2:
         #Primary Vs Cross Selling Products By Revenue
-        st.subheader("Primary Vs Non Primary Products By Net Revenue")
-        revenue_primary_items=(fil_orders.groupby("is_primary_item")["total_net_revenue"].sum().reset_index())
+        st.subheader("Primary Vs Non Primary Products By Total Revenue")
+        revenue_primary_items=(fil_orders.groupby("is_primary_item")["price_usd"].sum().reset_index())
         revenue_primary_items["is_primary_item"] = revenue_primary_items["is_primary_item"].map({0: "Non Primary Product",1: "Primary Product"})
         fig, ax = plt.subplots(figsize=(6,5.4))
-        ax.pie(revenue_primary_items["total_net_revenue"],labels=revenue_primary_items["is_primary_item"],autopct="%1.1f%%",startangle=90)
+        ax.pie(revenue_primary_items["price_usd"],labels=revenue_primary_items["is_primary_item"],autopct="%1.1f%%",startangle=90)
         center_cir=plt.Circle((0,0),0.50,fc="white")
         fig.gca().add_artist(center_cir)
         plt.tight_layout()
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
             st.markdown("""
-            - Primary products contribute approximately 84.5% of total revenue.
-            - Cross-selling products contribute around 15.5%.
+            - Primary products contribute approximately 84.7% of total revenue.
+            - Cross-selling products contribute around 15.3%.
             - Revenue is heavily dependent on primary product sales.
             - Cross-selling revenue remains underutilized.
             - There is opportunity to increase average order value through upselling strategies.
@@ -795,7 +802,7 @@ with tab2:
     year_quarter_revenue = (fil_order_items_session.groupby(["Year_Quarter","product_name"]).agg(total_revenue=("total_net_revenue","sum")).reset_index())
 
     fig = px.bar(year_quarter_revenue,x="Year_Quarter",y="total_revenue",color="product_name",color_discrete_sequence=["#055296", "#00CC96", "#AB6367","#118DFF"],barmode="stack",title="Product Launch Sales Analysis")
-    fig.update_layout(bargap=0.05,xaxis_title="Year-Quarter",yaxis_title="Total Net Revenue",legend_title="Product Name")
+    fig.update_layout(bargap=0.05,xaxis_title="Year-Quarter",yaxis_title="Total Revenue",legend_title="Product Name")
 
     plt.tight_layout()
     st.plotly_chart(fig, use_container_width=True)

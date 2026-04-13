@@ -255,6 +255,8 @@ with tab1:
         fig, ax = plt.subplots() 
         ax.bar(df["utm_source"], df["conversion_rate"], color="#055296") 
         ax.yaxis.set_major_formatter(mtick.PercentFormatter(1.0)) 
+        ax.set_ylabel("Conversion Rate")
+        ax.set_xlabel("Traffic Source")
         ax.grid(axis="y", linestyle="--", alpha=0.3) 
         st.pyplot(fig)
         with st.expander("Chart Explanation", expanded=False):
@@ -506,13 +508,13 @@ with tab2:
         # Repeat Revenue by Channel
         st.subheader("Repeat Revenue By Channel")
         merged_df = fil_orders.merge(fil_sessions[['website_session_id','channel_name']], on='website_session_id', how='left')
-        channel_revenue = merged_df.groupby("channel_name")["total_net_revenue"].sum().reset_index()
+        channel_revenue = merged_df.groupby("channel_name")["price_usd"].sum().reset_index()
 
         plt.figure(figsize=(6,6))
-        sns.barplot(data=channel_revenue, x="channel_name", y="total_net_revenue", color="#055296")
-        plt.title("Net Revenue by Channel")
+        sns.barplot(data=channel_revenue, x="channel_name", y="price_usd", color="#055296")
+        plt.title("Total Revenue by Channel")
         plt.xlabel("Channel")
-        plt.ylabel("Total Net Revenue")
+        plt.ylabel("Total Revenue")
         plt.xticks(rotation=45)
         plt.tight_layout()
         st.pyplot(plt)
